@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CozyCraft Color Splash Battle</title>
+  <style>
+    :root {
+      --panel: rgba(255,255,255,0.86);
+      --panel2: rgba(20,24,32,0.74);
+      --text: #17304a;
+      --muted: #56708d;
+      --shadow: 0 14px 40px rgba(0,0,0,0.15);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(#dff6ff, #fafcff 36%, #fffaf1);
+    }
+    canvas { display: block; }
+    #hud {
+      position: fixed;
+      inset: 14px 14px auto 14px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .topRow {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+      pointer-events: none;
+    }
+    #scorePanel {
+      flex: 1;
+      min-width: 0;
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 18px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    #timePanel {
+      width: 150px;
+      background: rgba(20,24,32,0.78);
+      color: white;
+      border-radius: 18px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      text-align: center;
+    }
+    .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      opacity: 0.75;
+      margin-bottom: 6px;
+    }
+    #scoreBar {
+      height: 24px;
+      display: flex;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.08);
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.12);
+      margin-bottom: 8px;
+    }
+    .segment {
+      height: 100%;
+      min-width: 4px;
+      transition: width 0.25s ease;
+    }
+    #legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .legendItem {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      border: 2px solid rgba(255,255,255,0.9);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      flex: 0 0 auto;
+    }
+    #timeMain {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: 0.03em;
+    }
+    #timeSub {
+      margin-top: 4px;
+      font-size: 12px;
+      opacity: 0.72;
+    }
+    #controls {
+      position: fixed;
+      left: 14px;
+      bottom: 14px;
+      z-index: 10;
+      width: min(390px, calc(100vw - 28px));
+      background: var(--panel2);
+      color: #eef6ff;
+      border-radius: 20px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    #controls h1 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      line-height: 1.1;
+    }
+    #controls p {
+      margin: 0;
+      font-size: 12px;
+      color: #d6e6ff;
+      line-height: 1.45;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    button {
+      border: none;
+      border-radius: 999px;
+      min-height: 42px;
+      padding: 0 14px;
+      font-weight: 800;
+      cursor: pointer;
+      flex: 1;
+    }
+    #restartBtn {
+      background: linear-gradient(135deg, #b9fff5, #8ec9ff);
+      color: #133b4a;
+    }
+    #throwBtn {
+      background: linear-gradient(135deg, #ffe8a9, #ffb0cb);
+      color: #522315;
+    }
+    #message {
+      margin-top: 10px;
+      min-height: 18px;
+      font-size: 12px;
+      color: #cde6ff;
+    }
+    #crosshair {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 18px;
+      height: 18px;
+      z-index: 9;
+      pointer-events: none;
+      opacity: 0.85;
+    }
+    #crosshair::before, #crosshair::after {
+      content: "";
+      position: absolute;
+      background: rgba(255,255,255,0.95);
+      border-radius: 999px;
+    }
+    #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
+    #crosshair::after { top: 8px; left: 0; width: 18px; height: 2px; }
+    #result {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      z-index: 20;
+      background: rgba(10,18,30,0.45);
+      backdrop-filter: blur(6px);
+      padding: 16px;
+    }
+    #resultCard {
+      width: min(520px, 100%);
+      background: rgba(255,255,255,0.95);
+      border-radius: 26px;
+      padding: 22px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.22);
+      color: #17304a;
+      text-align: center;
+    }
+    #resultCard h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    #resultCard p {
+      margin: 0 0 14px;
+      color: #557089;
+      line-height: 1.5;
+    }
+    #resultStats {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin: 12px 0 0;
+      text-align: left;
+    }
+    .resultRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: rgba(0,0,0,0.04);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+    @media (max-width: 760px) {
+      .topRow { flex-direction: column; }
+      #timePanel { width: 100%; }
+      #controls { width: calc(100vw - 20px); left: 10px; bottom: 10px; }
+      #hud { inset: 10px 10px auto 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div class="topRow">
+      <div id="scorePanel">
+        <div class="label">染色勢力図</div>
+        <div id="scoreBar">
+          <div id="seg0" class="segment"></div>
+          <div id="seg1" class="segment"></div>
+          <div id="seg2" class="segment"></div>
+        </div>
+        <div id="legend"></div>
+      </div>
+      <div id="timePanel">
+        <div class="label">Match Time</div>
+        <div id="timeMain">3:00</div>
+        <div id="timeSub">30秒で色が消える / 9人バトル / 巨大風船あり</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <h1>CozyCraft Color Splash Battle</h1>
+    <p>白い砂丘と砂浜で、3チーム9体が色水風船を投げ合う陣取りデモです。WASD移動、マウスで視点、クリックか F で投擲、Shiftでダッシュ。たまに巨大な一発逆転風船も飛びます。</p>
+    <div class="row">
+      <button id="restartBtn">新しい3分マッチ</button>
+      <button id="throwBtn">水風船を投げる</button>
+    </div>
+    <div id="message">チームと色は毎回ランダム。主人公も毎回どこかのチームに配属されます。</div>
+  </div>
+
+  <div id="crosshair"></div>
+
+  <div id="giantCountdown"><div id="giantCountdownText">3</div></div>
+
+  <div id="result">
+    <div id="resultCard">
+      <h2 id="winnerTitle">勝者決定</h2>
+      <p id="winnerText"></p>
+      <div id="resultStats"></div>
+      <div class="row" style="margin-top:16px;">
+        <button id="playAgainBtn">もう一度遊ぶ</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0xf7fbff, 90, 260);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    document.body.appendChild(renderer.domElement);
+
+    const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 450);
+    const clock = new THREE.Clock();
+
+    const hemi = new THREE.HemisphereLight(0xf9fcff, 0xeedcc2, 1.35);
+    scene.add(hemi);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 1.55);
+    sun.position.set(45, 70, 25);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -100;
+    sun.shadow.camera.right = 100;
+    sun.shadow.camera.top = 100;
+    sun.shadow.camera.bottom = -100;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 220;
+    scene.add(sun);
+
+    const world = new THREE.Group();
+    scene.add(world);
+
+    const terrainSize = 120;
+    const terrainSegments = 120;
+    const heights = [];
+    const terrainGeom = new THREE.PlaneGeometry(terrainSize, terrainSize, terrainSegments, terrainSegments);
+    terrainGeom.rotateX(-Math.PI / 2);
+    const pos = terrainGeom.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      let y = Math.sin(x * 0.08) * 1.6 + Math.cos(z * 0.07) * 1.2;
+      y += Math.sin((x + z) * 0.045) * 1.1;
+      y += Math.exp(-((x + 30) ** 2 + (z - 24) ** 2) / 1400) * 2.8;
+      y += Math.exp(-((x - 18) ** 2 + (z + 20) ** 2) / 1100) * 2.2;
+      y -= Math.exp(-((x - 34) ** 2 + (z - 38) ** 2) / 500) * 2.6;
+      pos.setY(i, y);
+      heights.push(y);
+    }
+    terrainGeom.computeVertexNormals();
+
+    const terrainMat = new THREE.MeshStandardMaterial({
+      color: 0xf4f0e6,
+      roughness: 0.96,
+      metalness: 0.01,
+      flatShading: false,
+    });
+    const terrain = new THREE.Mesh(terrainGeom, terrainMat);
+    terrain.receiveShadow = true;
+    world.add(terrain);
+
+    const beach = new THREE.Mesh(
+      new THREE.CircleGeometry(24, 48),
+      new THREE.MeshStandardMaterial({ color: 0xfbfdff, roughness: 0.85, metalness: 0.02, transparent: true, opacity: 0.95 })
+    );
+    beach.rotation.x = -Math.PI / 2;
+    beach.position.set(32, getGroundHeight(32, 34) + 0.06, 34);
+    beach.receiveShadow = true;
+    world.add(beach);
+
+    const water = new THREE.Mesh(
+      new THREE.CircleGeometry(15, 48),
+      new THREE.MeshStandardMaterial({ color: 0xdff7ff, roughness: 0.18, metalness: 0.02, transparent: true, opacity: 0.88 })
+    );
+    water.rotation.x = -Math.PI / 2;
+    water.position.set(34, getGroundHeight(34, 36) + 0.04, 36);
+    world.add(water);
+
+    function addRock(x, z, s = 1) {
+      const g = new THREE.Group();
+      const base = new THREE.Mesh(
+        new THREE.BoxGeometry(2.2 * s, 1.2 * s, 1.8 * s),
+        new THREE.MeshStandardMaterial({ color: 0xd9d3c8, roughness: 1 })
+      );
+      const top = new THREE.Mesh(
+        new THREE.BoxGeometry(1.7 * s, 0.8 * s, 1.5 * s),
+        new THREE.MeshStandardMaterial({ color: 0xeee8df, roughness: 1 })
+      );
+      base.castShadow = top.castShadow = true;
+      top.position.y = 0.95 * s;
+      g.add(base, top);
+      g.position.set(x, getGroundHeight(x, z) + 0.6 * s, z);
+      world.add(g);
+    }
+
+    function addPalm(x, z, h = 1) {
+      const g = new THREE.Group();
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8d6f52, roughness: 1 });
+      const leafMat = new THREE.MeshStandardMaterial({ color: 0x9ed8b2, roughness: 0.95 });
+      for (let i = 0; i < 5; i++) {
+        const seg = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.1, 0.35), trunkMat);
+        seg.position.y = i * 0.95;
+        seg.rotation.z = 0.04 * i;
+        seg.castShadow = true;
+        g.add(seg);
+      }
+      for (let i = 0; i < 5; i++) {
+        const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 2.6), leafMat);
+        leaf.position.set(0, 4.45, 0);
+        leaf.rotation.y = (Math.PI * 2 / 5) * i;
+        leaf.rotation.x = -0.42;
+        leaf.castShadow = true;
+        g.add(leaf);
+      }
+      g.position.set(x, getGroundHeight(x, z), z);
+      g.scale.setScalar(h);
+      world.add(g);
+    }
+
+    [-44, -28, -12, 8, 22, 46].forEach((x, i) => addRock(x, -30 + (i % 3) * 12, 0.9 + (i % 2) * 0.25));
+    addPalm(24, 18, 1.1);
+    addPalm(40, 22, 0.9);
+    addPalm(18, 34, 0.8);
+
+    const skyGeo = new THREE.SphereGeometry(220, 32, 16);
+    const skyMat = new THREE.ShaderMaterial({
+      side: THREE.BackSide,
+      uniforms: {
+        topColor: { value: new THREE.Color(0xdff5ff) },
+        bottomColor: { value: new THREE.Color(0xfffcf5) },
+      },
+      vertexShader: `varying vec3 vWorldPosition;
+        void main() {
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `uniform vec3 topColor;
+        uniform vec3 bottomColor;
+        varying vec3 vWorldPosition;
+        void main() {
+          float h = normalize(vWorldPosition).y * 0.5 + 0.5;
+          gl_FragColor = vec4(mix(bottomColor, topColor, smoothstep(0.0, 1.0, h)), 1.0);
+        }`
+    });
+    scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+    const keys = {};
+    let pointerLocked = false;
+    let yaw = 0;
+    let pitch = -0.32;
+    let matchTime = 180;
+    let matchOver = false;
+
+    const scoreBarEls = [document.getElementById('seg0'), document.getElementById('seg1'), document.getElementById('seg2')];
+    const legend = document.getElementById('legend');
+    const timeMain = document.getElementById('timeMain');
+    const messageEl = document.getElementById('message');
+    const resultEl = document.getElementById('result');
+    const winnerTitle = document.getElementById('winnerTitle');
+    const winnerText = document.getElementById('winnerText');
+    const resultStats = document.getElementById('resultStats');
+    const giantCountdownEl = document.getElementById('giantCountdown');
+    const giantCountdownTextEl = document.getElementById('giantCountdownText');
+
+    const balloonMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.02 });
+    const splashGeometry = new THREE.CircleGeometry(1, 24);
+
+    const teams = [];
+    const agents = [];
+    const balloons = [];
+    const splats = [];
+    const throwFlash = [];
+    let giantCharge = null;
+
+    function lerpAngle(a, b, t) {
+      const diff = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI;
+      return a + diff * t;
+    }
+
+
+    const teamNames = ['うみかぜ団', 'しらすな団', 'ひかり団'];
+    const paletteModes = ['pastel', 'toy'];
+    const archetypes = ['human', 'cat', 'fox', 'bear'];
+    const ALLY_COUNT = 2;
+    const ENEMY_A_COUNT = 3;
+    const ENEMY_B_COUNT = 3;
+    const TOTAL_AGENTS = 1 + ALLY_COUNT + ENEMY_A_COUNT + ENEMY_B_COUNT;
+
+    function getGroundHeight(x, z) {
+      x = THREE.MathUtils.clamp(x, -terrainSize / 2, terrainSize / 2);
+      z = THREE.MathUtils.clamp(z, -terrainSize / 2, terrainSize / 2);
+      let y = Math.sin(x * 0.08) * 1.6 + Math.cos(z * 0.07) * 1.2;
+      y += Math.sin((x + z) * 0.045) * 1.1;
+      y += Math.exp(-((x + 30) ** 2 + (z - 24) ** 2) / 1400) * 2.8;
+      y += Math.exp(-((x - 18) ** 2 + (z + 20) ** 2) / 1100) * 2.2;
+      y -= Math.exp(-((x - 34) ** 2 + (z - 38) ** 2) / 500) * 2.6;
+      return y;
+    }
+
+    function randomColorSet() {
+      const roll = Math.random();
+      const mode = roll < 0.333 ? 'pastel' : (roll < 0.666 ? 'toy' : 'primary');
+      let colors;
+      if (mode === 'primary') {
+        const primaryPool = [
+          new THREE.Color(0xff4b4b),
+          new THREE.Color(0x3f6fff),
+          new THREE.Color(0xffd84d),
+        ];
+        colors = shuffle(primaryPool.slice()).map(c => c.clone().offsetHSL((Math.random() - 0.5) * 0.02, 0, (Math.random() - 0.5) * 0.04));
+      } else {
+        const h = Math.random();
+        const sat = mode === 'toy' ? [0.88, 0.98] : [0.5, 0.7];
+        const lit = mode === 'toy' ? [0.48, 0.6] : [0.68, 0.8];
+        const offsets = [0, 0.28 + Math.random() * 0.08, 0.58 + Math.random() * 0.08];
+        colors = offsets.map(off => new THREE.Color().setHSL(
+          (h + off) % 1,
+          sat[0] + Math.random() * (sat[1] - sat[0]),
+          lit[0] + Math.random() * (lit[1] - lit[0])
+        ));
+      }
+      colors.mode = mode;
+      return colors;
+    }
+
+    function makeMat(color) {
+      return new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.02 });
+    }
+
+    function addBlock(parent, size, pos, color, cast = true) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), makeMat(color));
+      mesh.position.set(pos[0], pos[1], pos[2]);
+      mesh.castShadow = cast;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+      return mesh;
+    }
+
+    function faceParts(g, kind, colors, baseY, frontZ = 0.46) {
+      const eyeCol = colors.eye;
+      addBlock(g, [0.10, 0.10, 0.05], [-0.16, baseY + 0.12, frontZ], eyeCol);
+      addBlock(g, [0.10, 0.10, 0.05], [0.16, baseY + 0.12, frontZ], eyeCol);
+      if (kind === 'human') {
+        addBlock(g, [0.09, 0.10, 0.06], [0, baseY - 0.02, frontZ + 0.01], 0xe5b690);
+        addBlock(g, [0.22, 0.05, 0.05], [0, baseY - 0.16, frontZ], 0xcd7f86);
+      } else {
+        addBlock(g, [0.12, 0.10, 0.08], [0, baseY - 0.01, frontZ + 0.02], 0x3c2c24);
+        addBlock(g, [0.18, 0.05, 0.05], [0, baseY - 0.15, frontZ], 0x8f5e60);
+      }
+    }
+
+    function createAvatar(kind, colors, teamColor) {
+      const g = new THREE.Group();
+      const outline = new THREE.Color(teamColor).clone().lerp(new THREE.Color(0xffffff), 0.35);
+      if (kind === 'human') {
+        addBlock(g, [0.9, 1.1, 0.65], [0, 1.55, 0], colors.skin);
+        addBlock(g, [1.05, 1.25, 0.75], [0, 0.55, 0], colors.cloth);
+        addBlock(g, [0.26, 0.95, 0.26], [-0.62, 0.58, 0], colors.cloth);
+        addBlock(g, [0.26, 0.95, 0.26], [0.62, 0.58, 0], colors.cloth);
+        addBlock(g, [0.32, 0.98, 0.32], [-0.24, -0.62, 0], 0xf2efe9);
+        addBlock(g, [0.32, 0.98, 0.32], [0.24, -0.62, 0], 0xf2efe9);
+        addBlock(g, [0.96, 0.34, 0.72], [0, 2.08, -0.03], colors.hair);
+        addBlock(g, [0.72, 0.26, 0.2], [0, 1.86, -0.28], colors.hair);
+        addBlock(g, [1.15, 0.14, 0.14], [0, -1.15, 0], outline);
+        faceParts(g, 'human', colors, 1.55, 0.36);
+      } else if (kind === 'cat') {
+        addBlock(g, [1.0, 0.95, 0.8], [0, 1.5, 0], colors.skin);
+        addBlock(g, [1.12, 1.2, 0.9], [0, 0.42, 0], colors.cloth);
+        addBlock(g, [0.28, 0.95, 0.28], [-0.24, -0.72, 0], colors.skin);
+        addBlock(g, [0.28, 0.95, 0.28], [0.24, -0.72, 0], colors.skin);
+        addBlock(g, [0.25, 0.75, 0.25], [-0.62, 0.35, 0], colors.skin);
+        addBlock(g, [0.25, 0.75, 0.25], [0.62, 0.35, 0], colors.skin);
+        addBlock(g, [0.28, 0.28, 0.28], [-0.28, 2.04, 0], colors.hair).rotation.z = Math.PI / 4;
+        addBlock(g, [0.28, 0.28, 0.28], [0.28, 2.04, 0], colors.hair).rotation.z = Math.PI / 4;
+        const tail = addBlock(g, [0.2, 1.4, 0.2], [0, 0.1, -0.58], colors.hair);
+        tail.rotation.x = -0.65;
+        addBlock(g, [1.2, 0.14, 0.14], [0, -1.2, 0], outline);
+        faceParts(g, 'cat', colors, 1.5, 0.42);
+      } else if (kind === 'fox') {
+        addBlock(g, [1.02, 0.96, 0.82], [0, 1.5, 0], colors.skin);
+        addBlock(g, [1.12, 1.18, 0.9], [0, 0.42, 0], colors.cloth);
+        addBlock(g, [0.28, 0.98, 0.28], [-0.24, -0.72, 0], colors.skin);
+        addBlock(g, [0.28, 0.98, 0.28], [0.24, -0.72, 0], colors.skin);
+        addBlock(g, [0.25, 0.76, 0.25], [-0.64, 0.35, 0], colors.skin);
+        addBlock(g, [0.25, 0.76, 0.25], [0.64, 0.35, 0], colors.skin);
+        addBlock(g, [0.34, 0.34, 0.34], [-0.28, 2.06, 0], colors.hair).rotation.z = Math.PI / 4;
+        addBlock(g, [0.34, 0.34, 0.34], [0.28, 2.06, 0], colors.hair).rotation.z = Math.PI / 4;
+        const snout = addBlock(g, [0.42, 0.24, 0.22], [0, 0.02, 0.52], 0xf7e7d0);
+        const tail = addBlock(g, [0.28, 1.6, 0.28], [0, 0.18, -0.68], colors.hair);
+        tail.rotation.x = -0.9;
+        addBlock(g, [1.25, 0.14, 0.14], [0, -1.2, 0], outline);
+        faceParts(g, 'fox', colors, 1.5, 0.5);
+      } else {
+        addBlock(g, [1.3, 1.28, 1.0], [0, 1.68, 0], colors.skin);
+        addBlock(g, [1.48, 1.7, 1.08], [0, 0.18, 0], colors.cloth);
+        addBlock(g, [0.36, 1.5, 0.36], [-0.34, -1.2, 0], colors.skin);
+        addBlock(g, [0.36, 1.5, 0.36], [0.34, -1.2, 0], colors.skin);
+        addBlock(g, [0.34, 1.1, 0.34], [-0.96, 0.35, 0], colors.skin);
+        addBlock(g, [0.34, 1.1, 0.34], [0.96, 0.35, 0], colors.skin);
+        addBlock(g, [0.42, 0.42, 0.42], [-0.38, 2.38, 0.02], colors.hair).rotation.z = Math.PI / 4;
+        addBlock(g, [0.42, 0.42, 0.42], [0.38, 2.38, 0.02], colors.hair).rotation.z = Math.PI / 4;
+        addBlock(g, [0.36, 0.24, 0.2], [0, 0.12, 0.62], 0x47342e);
+        addBlock(g, [1.55, 0.18, 0.18], [0, -1.98, 0], outline);
+        faceParts(g, 'cat', colors, 1.68, 0.6);
+      }
+      return g;
+    }
+
+    function randomBodyColors() {
+      const base = new THREE.Color().setHSL(Math.random(), 0.25 + Math.random() * 0.18, 0.56 + Math.random() * 0.14);
+      const hair = new THREE.Color().setHSL(Math.random(), 0.28 + Math.random() * 0.3, 0.22 + Math.random() * 0.18);
+      const cloth = new THREE.Color().setHSL(Math.random(), 0.55 + Math.random() * 0.2, 0.56 + Math.random() * 0.1);
+      const eye = new THREE.Color().setHSL(Math.random(), 0.5, 0.3 + Math.random() * 0.2);
+      return { skin: base, hair, cloth, eye };
+    }
+
+    function createAgent({ id, teamIndex, kind, isPlayer = false }) {
+      const agent = {
+        id,
+        teamIndex,
+        kind,
+        isPlayer,
+        hp: 1,
+        speed: isPlayer ? 7.8 : 4.2 + Math.random() * 1.5,
+        dash: 1,
+        velocityY: 0,
+        yaw: Math.random() * Math.PI * 2,
+        targetYaw: 0,
+        cooldown: 0.8 + Math.random() * 0.6,
+        thinkTimer: 0,
+        wanderDir: new THREE.Vector3(),
+        splashPower: 1,
+        throwStrength: 19 + Math.random() * 4,
+        bodyColors: randomBodyColors(),
+      };
+      agent.teamColor = teams[teamIndex].color;
+      agent.group = createAvatar(kind, agent.bodyColors, agent.teamColor);
+      agent.group.traverse(obj => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        }
+      });
+      world.add(agent.group);
+      return agent;
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    const controlPoints = [
+      new THREE.Vector2(-46, -42), new THREE.Vector2(-22, -6), new THREE.Vector2(14, -30),
+      new THREE.Vector2(36, 18), new THREE.Vector2(20, 34), new THREE.Vector2(-6, 42),
+      new THREE.Vector2(-34, 28), new THREE.Vector2(42, -6), new THREE.Vector2(0, 8)
+    ];
+
+    function pickStrategicPoint(agent) {
+      if (Math.random() < 0.6) {
+        const p = controlPoints[Math.floor(Math.random() * controlPoints.length)];
+        return new THREE.Vector3(p.x + (Math.random() - 0.5) * 10, 0, p.y + (Math.random() - 0.5) * 10);
+      }
+      return new THREE.Vector3((Math.random() - 0.5) * (terrainSize - 18), 0, (Math.random() - 0.5) * (terrainSize - 18));
+    }
+
+    function randomSpawn(teamIndex, orderInTeam) {
+      const anchors = [
+        new THREE.Vector2(-28, -24),
+        new THREE.Vector2(24, -18),
+        new THREE.Vector2(-4, 30),
+      ];
+      const anchor = anchors[teamIndex];
+      const angle = orderInTeam / 3 * Math.PI * 2 + Math.random() * 0.5;
+      const radius = 6 + Math.random() * 6;
+      const x = anchor.x + Math.cos(angle) * radius;
+      const z = anchor.y + Math.sin(angle) * radius;
+      return new THREE.Vector3(x, getGroundHeight(x, z) + 2.1, z);
+    }
+
+    function clearMatchObjects() {
+      agents.splice(0).forEach(a => world.remove(a.group));
+      balloons.splice(0).forEach(b => world.remove(b.mesh));
+      splats.splice(0).forEach(s => world.remove(s.mesh));
+      throwFlash.splice(0).forEach(f => world.remove(f));
+      teams.splice(0);
+      giantCharge = null;
+      updateGiantCountdownUI();
+    }
+
+    let player = null;
+
+    function startMatch() {
+      clearMatchObjects();
+      matchTime = 180;
+      matchOver = false;
+      resultEl.style.display = 'none';
+      const colors = randomColorSet();
+      const paletteMode = getPaletteModeLabel(colors.mode);
+      shuffle(teamNames.slice()).forEach((name, idx) => {
+        teams.push({
+          index: idx,
+          name,
+          color: colors[idx],
+          activeArea: 0,
+        });
+      });
+
+      const assignment = [0, 0, 0, 1, 1, 1, 2, 2, 2];
+      shuffle(assignment);
+      const kinds = Array.from({ length: TOTAL_AGENTS }, () => archetypes[Math.floor(Math.random() * archetypes.length)]);
+      const perTeamCounts = [0, 0, 0];
+      for (let i = 0; i < TOTAL_AGENTS; i++) {
+        const teamIndex = assignment[i];
+        const agent = createAgent({ id: i, teamIndex, kind: kinds[i], isPlayer: i === 0 });
+        const slot = perTeamCounts[teamIndex]++;
+        const spawn = randomSpawn(teamIndex, slot);
+        agent.position = spawn.clone();
+        agent.group.position.copy(spawn);
+        agent.group.rotation.y = agent.yaw;
+        agents.push(agent);
+        if (agent.isPlayer) player = agent;
+      }
+
+      messageEl.textContent = `今回の主人公チームは「${teams[player.teamIndex].name}」。今回は ${paletteMode} のラウンドです。巨大風船は3秒予告のあとに飛びます。`;
+      document.getElementById('timeSub').textContent = `30秒で色が消える / 9人バトル / ${paletteMode}`;
+      updateScoreUI();
+    }
+
+    function updateScoreUI() {
+      const scores = [0, 0, 0];
+      for (const s of splats) {
+        const t = Math.max(0, 1 - s.age / s.life);
+        scores[s.teamIndex] += s.area * (0.35 + 0.65 * t);
+      }
+      let total = scores.reduce((a, b) => a + b, 0);
+      if (total < 0.001) total = 1;
+      legend.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        teams[i].activeArea = scores[i];
+        scoreBarEls[i].style.width = `${(scores[i] / total) * 100}%`;
+        scoreBarEls[i].style.background = `linear-gradient(135deg, ${teams[i].color.clone().offsetHSL(0,0,0.08).getStyle()}, ${teams[i].color.getStyle()})`;
+        const item = document.createElement('div');
+        item.className = 'legendItem';
+        item.innerHTML = `<span class="swatch" style="background:${teams[i].color.getStyle()}"></span><strong>${teams[i].name}</strong><span>${((scores[i] / total) * 100).toFixed(1)}%</span>`;
+        legend.appendChild(item);
+      }
+      const mins = Math.floor(matchTime / 60);
+      const secs = Math.floor(matchTime % 60);
+      timeMain.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function getPaletteModeLabel(mode) {
+      if (mode === 'toy') return '幼児用おもちゃみたいなビビッド配色';
+      if (mode === 'primary') return 'くっきり楽しい三原色配色';
+      return 'やさしいパステル配色';
+    }
+
+    function updateGiantCountdownUI() {
+      if (!giantCharge || matchOver) {
+        giantCountdownEl.classList.remove('show');
+        return;
+      }
+      giantCountdownEl.classList.add('show');
+      const remain = giantCharge.remaining;
+      giantCountdownTextEl.textContent = remain > 2 ? '3' : remain > 1 ? '2' : remain > 0 ? '1' : '！';
+      const pulse = remain > 0 ? 1 + (1 - (remain % 1)) * 0.12 : 1.18;
+      giantCountdownTextEl.style.transform = `scale(${pulse})`;
+    }
+
+    function beginGiantCharge(agent, targetPoint = null) {
+      if (giantCharge || matchOver) return false;
+      giantCharge = {
+        agent,
+        targetPoint: targetPoint ? targetPoint.clone() : null,
+        remaining: 3,
+        total: 3,
+      };
+      agent.cooldown = Math.max(agent.cooldown, 3.85 + Math.random() * 0.25);
+      updateGiantCountdownUI();
+      return true;
+    }
+
+    function launchBalloon(agent, targetPoint = null, giant = false) {
+      const handPos = agent.position.clone().add(new THREE.Vector3(0, agent.kind === 'bear' ? 1.85 : 1.35, 0));
+      let dir;
+      if (targetPoint) {
+        dir = targetPoint.clone().sub(handPos).normalize();
+      } else if (agent.isPlayer) {
+        const camDir = new THREE.Vector3();
+        camera.getWorldDirection(camDir);
+        dir = camDir.normalize();
+      } else {
+        const enemy = pickTarget(agent);
+        if (enemy) {
+          dir = enemy.position.clone().add(new THREE.Vector3(0, 1.1, 0)).sub(handPos).normalize();
+        } else {
+          dir = new THREE.Vector3(Math.sin(agent.yaw), 0.1, Math.cos(agent.yaw)).normalize();
+        }
+      }
+      dir.y = Math.max(dir.y + 0.22, 0.18);
+      dir.normalize();
+      const speedMul = giant ? 0.86 : 1;
+      const powerMul = giant ? 2.8 : 1;
+      const vel = dir.multiplyScalar((agent.throwStrength || 20) * speedMul);
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(giant ? 0.5 : 0.28, 16, 16), balloonMat.clone());
+      mesh.material.color.copy(teams[agent.teamIndex].color).lerp(new THREE.Color(0xffffff), giant ? 0.12 : 0.22);
+      mesh.castShadow = true;
+      mesh.position.copy(handPos);
+      world.add(mesh);
+      balloons.push({ mesh, velocity: vel, teamIndex: agent.teamIndex, age: 0, owner: agent.id, giant, powerMul });
+
+      const flash = new THREE.Mesh(
+        new THREE.RingGeometry(giant ? 0.28 : 0.18, giant ? 0.85 : 0.48, 20),
+        new THREE.MeshBasicMaterial({ color: teams[agent.teamIndex].color, transparent: true, opacity: 0.8, side: THREE.DoubleSide })
+      );
+      flash.position.copy(handPos);
+      flash.lookAt(camera.position);
+      world.add(flash);
+      throwFlash.push(flash);
+      setTimeout(() => {
+        world.remove(flash);
+        const idx = throwFlash.indexOf(flash);
+        if (idx >= 0) throwFlash.splice(idx, 1);
+      }, giant ? 180 : 120);
+    }
+
+    function throwBalloon(agent, targetPoint = null) {
+      if (!agent || agent.cooldown > 0 || matchOver) return;
+      const giant = Math.random() < 0.11;
+      if (giant) {
+        if (beginGiantCharge(agent, targetPoint)) {
+          messageEl.textContent = 'どこかで巨大風船の気配…！ 3・2・1・！';
+        }
+        return;
+      }
+      agent.cooldown = agent.isPlayer ? 0.52 : 0.9 + Math.random() * 0.65;
+      launchBalloon(agent, targetPoint, false);
+    }
+
+    function spawnSplash(pos, normal, teamIndex, power = 1) {
+      const group = new THREE.Group();
+      const teamColor = teams[teamIndex].color;
+      const parts = Math.floor((7 + Math.floor(Math.random() * 5)) * power);
+      let area = 0;
+      for (let i = 0; i < parts; i++) {
+        const radius = (0.8 + Math.random() * 2.2) * (0.8 + power * 0.55);
+        area += Math.PI * radius * radius;
+        const mesh = new THREE.Mesh(
+          splashGeometry,
+          new THREE.MeshStandardMaterial({
+            color: teamColor.clone().offsetHSL((Math.random() - 0.5) * 0.03, 0, Math.random() * 0.08),
+            roughness: 0.24,
+            metalness: 0.02,
+            transparent: true,
+            opacity: 0.84,
+            side: THREE.DoubleSide,
+          })
+        );
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.rotation.z = Math.random() * Math.PI * 2;
+        mesh.scale.set(radius * (0.7 + Math.random() * 0.5), radius * (0.45 + Math.random() * 0.35), 1);
+        mesh.position.set(
+          pos.x + (Math.random() - 0.5) * (3.8 + power * 3.1),
+          pos.y + 0.06 + i * 0.002,
+          pos.z + (Math.random() - 0.5) * (3.8 + power * 3.1)
+        );
+        group.add(mesh);
+      }
+      world.add(group);
+      splats.push({ mesh: group, age: 0, life: 30, area, teamIndex });
+    }
+
+    function pickTarget(agent) {
+      let best = null;
+      let bestDist = Infinity;
+      for (const other of agents) {
+        if (other.id === agent.id || other.teamIndex === agent.teamIndex) continue;
+        const d = agent.position.distanceToSquared(other.position);
+        if (d < bestDist) {
+          bestDist = d;
+          best = other;
+        }
+      }
+      return best;
+    }
+
+    function updatePlayer(dt) {
+      const move = new THREE.Vector3();
+      if (keys['KeyW']) move.z += 1;
+      if (keys['KeyS']) move.z -= 1;
+      if (keys['KeyA']) move.x -= 1;
+      if (keys['KeyD']) move.x += 1;
+      const speed = player.speed * (keys['ShiftLeft'] || keys['ShiftRight'] ? 1.48 : 1);
+      if (move.lengthSq() > 0) {
+        move.normalize();
+        const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+        const right = new THREE.Vector3(-forward.z, 0, forward.x);
+        const dir = new THREE.Vector3();
+        dir.addScaledVector(forward, move.z);
+        dir.addScaledVector(right, move.x);
+        dir.normalize();
+        player.position.addScaledVector(dir, speed * dt);
+        player.yaw = Math.atan2(dir.x, dir.z);
+      }
+      player.position.x = THREE.MathUtils.clamp(player.position.x, -terrainSize / 2 + 2, terrainSize / 2 - 2);
+      player.position.z = THREE.MathUtils.clamp(player.position.z, -terrainSize / 2 + 2, terrainSize / 2 - 2);
+      const ground = getGroundHeight(player.position.x, player.position.z) + (player.kind === 'bear' ? 3.0 : 2.05);
+      player.velocityY -= 20 * dt;
+      player.position.y += player.velocityY * dt;
+      if (player.position.y < ground) {
+        player.position.y = ground;
+        player.velocityY = 0;
+        if (keys['Space']) player.velocityY = 7.8;
+      }
+      player.group.position.copy(player.position);
+      player.group.rotation.y = lerpAngle(player.group.rotation.y, player.yaw, 0.16);
+    }
+
+    function updateAI(agent, dt) {
+      agent.cooldown -= dt;
+      agent.thinkTimer -= dt;
+      const enemy = pickTarget(agent);
+      const nearestEnemyDist = enemy ? agent.position.distanceTo(enemy.position) : Infinity;
+
+      if (enemy && nearestEnemyDist < 28 && agent.cooldown <= 0) {
+        throwBalloon(agent, enemy.position.clone().add(new THREE.Vector3(0, 1.1, 0)));
+      }
+
+      if (agent.thinkTimer <= 0 || !agent.roamTarget) {
+        agent.thinkTimer = 0.9 + Math.random() * 1.4;
+        if (enemy && Math.random() < 0.72) {
+          const pressure = enemy.position.clone().sub(agent.position);
+          pressure.y = 0;
+          const side = new THREE.Vector3(-pressure.z, 0, pressure.x).normalize().multiplyScalar((Math.random() - 0.5) * 12);
+          const destination = enemy.position.clone().add(side).addScaledVector(pressure.normalize(), Math.random() * 8 - 4);
+          agent.roamTarget = destination;
+        } else {
+          agent.roamTarget = pickStrategicPoint(agent);
+        }
+      }
+
+      const moveVec = agent.roamTarget.clone().sub(agent.position);
+      moveVec.y = 0;
+      if (moveVec.lengthSq() < 4) {
+        agent.roamTarget = pickStrategicPoint(agent);
+      }
+      moveVec.normalize();
+      agent.wanderDir.lerp(moveVec, 0.18);
+      if (agent.wanderDir.lengthSq() > 0.001) {
+        agent.wanderDir.normalize();
+        agent.position.addScaledVector(agent.wanderDir, agent.speed * dt);
+        agent.position.x = THREE.MathUtils.clamp(agent.position.x, -terrainSize / 2 + 2, terrainSize / 2 - 2);
+        agent.position.z = THREE.MathUtils.clamp(agent.position.z, -terrainSize / 2 + 2, terrainSize / 2 - 2);
+        agent.yaw = Math.atan2(agent.wanderDir.x, agent.wanderDir.z);
+      }
+
+      const bodyHeight = agent.kind === 'bear' ? 3.0 : 2.05;
+      agent.position.y = getGroundHeight(agent.position.x, agent.position.z) + bodyHeight;
+      agent.group.position.copy(agent.position);
+      agent.group.rotation.y = lerpAngle(agent.group.rotation.y, agent.yaw, 0.12);
+      const bob = Math.sin(performance.now() * 0.004 + agent.id) * 0.05;
+      agent.group.position.y += bob;
+    }
+
+    function updateCamera(dt) {
+      const pivot = player.position.clone().add(new THREE.Vector3(0, player.kind === 'bear' ? 2.1 : 1.65, 0));
+      const distance = player.kind === 'bear' ? 9.6 : 8.5;
+      const camOffset = new THREE.Vector3(
+        Math.sin(yaw) * Math.cos(pitch) * distance,
+        Math.sin(-pitch) * distance + 2.2,
+        Math.cos(yaw) * Math.cos(pitch) * distance,
+      );
+      const desired = pivot.clone().add(camOffset);
+      camera.position.lerp(desired, 0.12);
+      camera.lookAt(pivot);
+    }
+
+    function updateBalloons(dt) {
+      for (let i = balloons.length - 1; i >= 0; i--) {
+        const b = balloons[i];
+        b.age += dt;
+        b.velocity.y -= 24 * dt;
+        b.mesh.position.addScaledVector(b.velocity, dt);
+        b.mesh.rotation.x += dt * 6;
+        b.mesh.rotation.z += dt * 5;
+        const groundY = getGroundHeight(b.mesh.position.x, b.mesh.position.z) + 0.15;
+        if (b.mesh.position.y <= groundY || b.age > 4) {
+          const pos = b.mesh.position.clone();
+          pos.y = groundY;
+          spawnSplash(pos, new THREE.Vector3(0, 1, 0), b.teamIndex, b.powerMul || 1);
+          world.remove(b.mesh);
+          balloons.splice(i, 1);
+        }
+      }
+    }
+
+    function updateSplats(dt) {
+      for (let i = splats.length - 1; i >= 0; i--) {
+        const s = splats[i];
+        s.age += dt;
+        const t = 1 - s.age / s.life;
+        s.mesh.children.forEach((part, idx) => {
+          part.material.opacity = Math.max(0, 0.86 * t);
+          const grow = 1 + (1 - t) * 0.08;
+          part.scale.x *= 1 + dt * 0.02;
+          part.scale.y *= 1 + dt * 0.02;
+        });
+        if (s.age >= s.life) {
+          world.remove(s.mesh);
+          splats.splice(i, 1);
+        }
+      }
+    }
+
+    function endMatch() {
+      matchOver = true;
+      updateScoreUI();
+      const ranking = teams.map(t => ({ ...t })).sort((a, b) => b.activeArea - a.activeArea);
+      winnerTitle.textContent = `${ranking[0].name} の勝ち`;
+      winnerText.textContent = `3分の色塗り陣取りが終了しました。もっとも白い大地を染めたのは ${ranking[0].name} です。`;
+      resultStats.innerHTML = '';
+      const total = ranking.reduce((sum, t) => sum + t.activeArea, 0) || 1;
+      ranking.forEach(t => {
+        const row = document.createElement('div');
+        row.className = 'resultRow';
+        row.innerHTML = `<span class="legendItem"><span class="swatch" style="background:${t.color.getStyle()}"></span><strong>${t.name}</strong></span><strong>${((t.activeArea / total) * 100).toFixed(1)}%</strong>`;
+        resultStats.appendChild(row);
+      });
+      resultEl.style.display = 'grid';
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (e.code === 'KeyF') throwBalloon(player);
+    });
+    window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+    renderer.domElement.addEventListener('click', () => {
+      if (!pointerLocked) renderer.domElement.requestPointerLock();
+      else throwBalloon(player);
+    });
+    document.addEventListener('pointerlockchange', () => {
+      pointerLocked = document.pointerLockElement === renderer.domElement;
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (!pointerLocked) return;
+      yaw -= e.movementX * 0.0028;
+      pitch -= e.movementY * 0.0021;
+      pitch = THREE.MathUtils.clamp(pitch, -0.95, 0.28);
+    });
+
+    document.getElementById('restartBtn').addEventListener('click', startMatch);
+    document.getElementById('playAgainBtn').addEventListener('click', startMatch);
+    document.getElementById('throwBtn').addEventListener('click', () => throwBalloon(player));
+
+    startMatch();
+    camera.position.set(0, 9, 12);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.033);
+      if (player && !matchOver) {
+        matchTime = Math.max(0, matchTime - dt);
+        player.cooldown -= dt;
+        if (giantCharge) {
+          giantCharge.remaining -= dt;
+          updateGiantCountdownUI();
+          if (giantCharge.remaining <= -0.18) {
+            const chargedAgent = giantCharge.agent;
+            const chargedTarget = giantCharge.targetPoint;
+            giantCharge = null;
+            updateGiantCountdownUI();
+            if (chargedAgent && agents.includes(chargedAgent) && !matchOver) {
+              launchBalloon(chargedAgent, chargedTarget, true);
+              messageEl.textContent = '巨大風船がブシャーッ！ 一発逆転のチャンス！';
+            }
+          }
+        }
+        updatePlayer(dt);
+        for (const agent of agents) {
+          if (!agent.isPlayer) updateAI(agent, dt);
+        }
+        if (matchTime <= 0) endMatch();
+      }
+      updateBalloons(dt);
+      updateSplats(dt);
+      if (player) updateCamera(dt);
+      updateScoreUI();
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
